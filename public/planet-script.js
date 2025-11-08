@@ -9,6 +9,81 @@ const camera = new THREE.PerspectiveCamera(
 );
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 
+function createLatitudeLines(radius, count, color) {
+  const lines = new THREE.Group();
+  // Créer des lignes de latitude uniformément réparties
+  for (let i = 1; i < count - 1; i++) {
+    // Éviter les pôles
+    const phi = (i / (count - 1)) * Math.PI - Math.PI / 2; // Angle de -90 à 90 degrés
+    const y = radius * Math.sin(phi); // Hauteur du cercle (latitude)
+
+    // Calculer le rayon de ce cercle (plus petit aux pôles)
+    const currentRadius = radius * Math.cos(phi);
+
+    const material = new THREE.LineBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.8,
+      linewidth: 2, // Plus épais (ne fonctionne pas sur tous les navigateurs)
+    });
+    const points = [];
+    const segments = 128; // Plus de segments pour des lignes plus lisses
+
+    for (let j = 0; j <= segments; j++) {
+      const theta = (j / segments) * Math.PI * 2; // Angle de 0 à 360 degrés
+      points.push(
+        new THREE.Vector3(
+          currentRadius * Math.cos(theta),
+          y, // La hauteur reste constante pour cette latitude
+          currentRadius * Math.sin(theta)
+        )
+      );
+    }
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geometry, material);
+    lines.add(line);
+  }
+  return lines;
+}
+
+function createLongitudeLines(radius, count, color) {
+  const lines = new THREE.Group();
+  const material = new THREE.LineBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.8,
+    linewidth: 2,
+  });
+  const segments = 128; // Plus de segments pour des lignes plus lisses
+
+  for (let i = 0; i < count; i++) {
+    const theta = (i / count) * Math.PI * 2; // Angle de rotation autour de l'axe Y
+
+    const points = [];
+    // Dessiner de -PI/2 (pôle sud) à PI/2 (pôle nord)
+    for (let j = 0; j <= segments; j++) {
+      const phi = (j / segments) * Math.PI - Math.PI / 2;
+      points.push(
+        new THREE.Vector3(
+          0, // X sera transformé par la rotation
+          radius * Math.sin(phi), // Y (latitude)
+          radius * Math.cos(phi) // Z (profondeur)
+        )
+      );
+    }
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geometry, material);
+
+    // Rotation pour positionner le méridien
+    line.rotation.y = theta;
+    lines.add(line);
+  }
+  return lines;
+}
+
+//stopp code
 renderer.setSize(window.innerWidth, window.innerHeight);
 container.appendChild(renderer.domElement);
 
@@ -19,24 +94,74 @@ controls.enableDamping = true; // Fluidité
 controls.dampingFactor = 0.05;
 
 // --- 2. Lumières ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Lumière globale
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); // Lumière globale plus faible
 scene.add(ambientLight);
+
+// Lumière directionnelle principale (simule le soleil)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+directionalLight.position.set(10, 10, 5);
+scene.add(directionalLight);
+
+// Lumière ponctuelle colorée pour l'effet spatial
+const pointLight = new THREE.PointLight(0x4444ff, 0.8, 50);
+pointLight.position.set(-10, 5, 10);
+scene.add(pointLight);
+
+// Deuxième lumière ponctuelle violette (assortie à vos grilles)
+const pointLight2 = new THREE.PointLight(0xad45c6, 0.6, 30);
+pointLight2.position.set(5, -8, -5);
+scene.add(pointLight2);
 
 // --- 3. Création de la Planète ---
 const radius = 5; // Rayon de la sphère
 const textureLoader = new THREE.TextureLoader();
 
 // CHARGEZ VOTRE IMAGE ICI
-const planetTexture = textureLoader.load("test14.jpg");
+const planetTexture = textureLoader.load("fun.jpg");
 // const planetTexture = textureLoader.load("maps.webp");
 
 const geometry = new THREE.SphereGeometry(radius, 64, 64); // Sphère
 const material = new THREE.MeshStandardMaterial({
   map: planetTexture,
+  emissive: 0x111122, // Légère émission bleutée
+  emissiveIntensity: 0.1, // Faible intensité pour un effet subtil
 });
 
 const planet = new THREE.Mesh(geometry, material);
 scene.add(planet);
+
+// Créer une atmosphère lumineuse autour de la planète
+const atmosphereGeometry = new THREE.SphereGeometry(radius * 1.05, 64, 64);
+const atmosphereMaterial = new THREE.MeshBasicMaterial({
+  color: 0x4444ff,
+  transparent: true,
+  opacity: 0.15,
+  side: THREE.BackSide, // Visible de l'intérieur
+});
+const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+scene.add(atmosphere);
+
+// Création et ajout des grilles de latitude et longitude
+const latitudeGrid = createLatitudeLines(5, 24, 0xad45c6); // 24 lignes de latitude
+scene.add(latitudeGrid);
+
+const longitudeGrid = createLongitudeLines(5, 36, 0xad45c6); // 36 lignes de longitude
+scene.add(longitudeGrid);
+
+//grille wireframe
+// Utiliser la même géométrie, mais avec un rayon légèrement plus grand pour le faire "flotter" un peu au-dessus de la texture
+// const wireframeRadius = radius * 1.005; // Léger agrandissement
+// const wireframeGeometry = new THREE.SphereGeometry(wireframeRadius, 64, 64);
+
+// const wireframeMaterial = new THREE.MeshBasicMaterial({
+//   color: 0xad45c6, // Couleur de la grille
+//   wireframe: true,
+//   transparent: true, // Pour permettre la transparence
+//   opacity: 0.5, // Ajustez l'opacité pour voir la texture en dessous
+// });
+
+// const wireframeGlobe = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
+// scene.add(wireframeGlobe);
 
 // Position initiale de la caméra
 camera.position.z = 10;
@@ -57,6 +182,15 @@ function animate() {
 
   // Optionnel : Faire tourner la planète automatiquement (retirez si vous voulez seulement la rotation par l'utilisateur)
   planet.rotation.y += 0.001;
+
+  // Animer les lumières pour un effet dynamique
+  const time = Date.now() * 0.001;
+  pointLight.intensity = 0.8 + Math.sin(time * 2) * 0.3; // Pulsation
+  pointLight2.intensity = 0.6 + Math.cos(time * 1.5) * 0.2; // Pulsation décalée
+
+  // Faire tourner les lumières autour de la planète
+  pointLight.position.x = Math.cos(time * 0.5) * 15;
+  pointLight.position.z = Math.sin(time * 0.5) * 15;
 
   // Dessiner la scène à l'écran
   renderer.render(scene, camera);
