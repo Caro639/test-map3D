@@ -2,7 +2,7 @@ body {
   margin: 0;
   overflow: hidden;
   font-family: Arial, sans-serif;
-  background-image: url("cosmos.jpg");
+  background-image: url("./images/cosmos.jpg");
   background-size: cover;
   /* background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%)
     no-repeat; */
@@ -13,10 +13,17 @@ body {
 }
 h1,
 h2 {
-  color: #ad45c6;
+  color: floralwhite;
   text-align: center;
   font-size: 3.5em;
-  margin: 40px auto 0 auto;
+}
+
+.container-title {
+  position: absolute;
+  top: 20px;
+  width: 100%;
+  z-index: 1;
+  text-align: center;
 }
 
 /* background test*/
